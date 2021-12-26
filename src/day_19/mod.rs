@@ -1,14 +1,14 @@
 use std::hash::Hash;
 
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Clone, Copy, PartialEq, Hash, Eq)]
 struct Vector(i16, i16, i16);
 
-impl Into<Vector> for (i16, i16, i16) {
-    fn into(self) -> Vector {
-        Vector(self.0, self.1, self.2)
+impl From<(i16, i16, i16)> for Vector {
+    fn from(t: (i16, i16, i16)) -> Self {
+        Vector(t.0, t.1, t.2)
     }
 }
 
@@ -127,26 +127,24 @@ fn do_stuff(
     unoriented_scans: &mut Vec<Scan>,
     unified_beacons: &mut FxHashSet<Vector>,
 ) -> Option<Vector> {
+    let mut diffs = FxHashMap::default();
     for (i, scan) in unoriented_scans.iter().enumerate() {
         for r in Rotation::rotations() {
+            diffs.clear();
             let rotated_beacons: Vec<_> = scan.beacons.iter().map(|b| r.apply(b)).collect();
             for ref_b in unified_beacons.iter() {
                 for other_b in &rotated_beacons {
                     let diff = ref_b.sub(other_b);
-                    let translated_rotated_beacons = &rotated_beacons
-                        .iter()
-                        .map(|b| b.add(&diff))
-                        .collect::<Vec<_>>();
-                    let mut count = 0;
-                    for b in translated_rotated_beacons {
-                        if unified_beacons.contains(b) {
-                            count += 1;
-                            if count >= 12 {
-                                unified_beacons.extend(translated_rotated_beacons);
-                                unoriented_scans.swap_remove(i);
-                                return Some(diff);
-                            }
-                        }
+                    let diff_count = diffs.entry(diff).or_insert(0);
+                    *diff_count += 1;
+                    if *diff_count >= 12 {
+                        let translated_rotated_beacons = &rotated_beacons
+                            .iter()
+                            .map(|b| b.add(&diff))
+                            .collect::<Vec<_>>();
+                        unified_beacons.extend(translated_rotated_beacons);
+                        unoriented_scans.swap_remove(i);
+                        return Some(diff);
                     }
                 }
             }
