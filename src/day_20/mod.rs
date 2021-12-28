@@ -21,7 +21,7 @@ impl Image {
             .map(|c| c == '#')
             .collect();
 
-        let buff = (num_iter + 2) as usize;
+        let buff = (num_iter + 1) as usize;
         let width = input.lines().nth(2).unwrap().len();
         let max_width = width + 2 * buff;
 
